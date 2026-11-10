@@ -24,7 +24,7 @@ Aplicación web para explorar y controlar escenarios de Unreal Engine de forma r
 
 ### Infraestructura
 
-- **Node.js** 18+ para el servidor de señalización
+- **Node.js**: utiliza la versión indicada en `NODE_VERSION` de la rama de Pixel Streaming Infrastructure y compatible con Vite
 - **Pixel Streaming Infrastructure** (versión compatible con tu UE)
 - Servidor con GPU para ejecutar Unreal
 
@@ -43,27 +43,49 @@ Aplicación web para explorar y controlar escenarios de Unreal Engine de forma r
 npm install
 ```
 
-### 2. Configurar Pixel Streaming Infrastructure
+### 2. Preparar y arrancar Pixel Streaming Infrastructure
 
-Descarga la infraestructura compatible con tu versión de Unreal Engine:
+La aplicación usa la biblioteca frontend de UE 5.6. Usa una versión de Unreal y una rama de infraestructura compatibles; por ejemplo, para UE 5.6:
 
 ```bash
-# Para UE 5.6
-git clone https://github.com/EpicGames/PixelStreamingInfrastructure.git
-cd PixelStreamingInfrastructure/WebServer
-npm install
+cd ~/work
+git clone --branch UE5.6 https://github.com/EpicGames/PixelStreamingInfrastructure.git
+cd PixelStreamingInfrastructure
 ```
 
-### 3. Configurar la conexión
+Si ya tienes el repositorio, utiliza esa copia y comprueba que su rama sea compatible con tu versión de Unreal. En Linux o macOS, arranca el servidor desde la raíz del repositorio:
 
-Edita `src/config.ts` para ajustar la URL del servidor de señalización:
+```bash
+./SignallingWebServer/platform_scripts/bash/start.sh --nosudo --player_port 8080
+```
+
+En Windows, desde la raíz del repositorio:
+
+```cmd
+.\SignallingWebServer\platform_scripts\cmd\start.bat --player_port 8080
+```
+
+El script instala y compila los componentes necesarios. Deja el servidor en ejecución. En este ejemplo, el puerto **8080** acepta conexiones del navegador y el puerto **8888** acepta conexiones de la aplicación de Unreal. El puerto **8889** se usa para el SFU, no para el navegador en la configuración predeterminada.
+
+### 3. Configurar la conexión del navegador
+
+En `rtg-stream/src/config.ts`, configura el puerto del navegador del servidor de señalización. Para una prueba en la misma máquina:
 
 ```typescript
-export const config = {
-  signallingServerUrl: 'ws://tu-servidor:8080',
-  // ... resto de config
-};
+signallingServerUrl: 'ws://127.0.0.1:8080',
 ```
+
+La configuración actual del proyecto apunta a `ws://127.0.0.1:8889`; cámbiala para que coincida con `--player_port`. Si el navegador está en otra máquina, sustituye `127.0.0.1` por la dirección accesible del servidor.
+
+### 4. Conectar Unreal
+
+Habilita el plugin Pixel Streaming compatible con tu versión de Unreal e inicia la aplicación o escena con la URL del puerto de streamer, por ejemplo:
+
+```text
+-PixelStreamingURL=ws://127.0.0.1:8888
+```
+
+Usa la dirección del servidor de señalización en lugar de `127.0.0.1` si Unreal se ejecuta en otra máquina. Después inicia `rtg-stream` como se indica a continuación y abre la página en el navegador.
 
 ## ▶️ Ejecución
 
@@ -161,16 +183,8 @@ signallingServerUrl: 'ws://192.168.1.100:8080'
 ### Acceso desde internet
 
 1. **HTTPS**: Configura certificados SSL en el servidor de señalización
-2. **STUN/TURN**: Añade servidores STUN/TURN en la configuración:
-
-```typescript
-stunServers: ['stun:stun.l.google.com:19302'],
-turnServer: {
-  url: 'turn:tu-servidor:3478',
-  username: 'usuario',
-  credential: 'contraseña'
-}
-```
+2. **STUN/TURN**: Configura los servidores ICE en el servidor de señalización mediante `--peer_options`; consulta la documentación de Pixel Streaming Infrastructure. Los campos `stunServers` y `turnServer` presentes en `src/config.ts` no se aplican actualmente a la conexión.
+3. Usa una URL `wss://` accesible desde el navegador y configura los puertos y certificados según tu despliegue.
 
 ## 📊 Estadísticas
 
